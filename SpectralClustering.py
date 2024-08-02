@@ -17,7 +17,7 @@ def SpectralClustering(CKSym, n):
     kerN = vN[:, N - n:N]
     normN = np.sqrt(np.sum(np.square(kerN), axis=1))
     kerNS = np.divide(kerN, normN.reshape(len(normN), 1) + np.finfo(float).eps)
-    km = KMeans(n_clusters=n, n_init=REPlic, max_iter=MAXiter, n_jobs=-1).fit(kerNS)
+    km = KMeans(n_clusters=n, n_init=REPlic, max_iter=MAXiter).fit(kerNS)
     return km.labels_
 
 
