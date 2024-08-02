@@ -1,4 +1,7 @@
 import numpy as np
+from argparse import ArgumentParser
+import sys
+
 from DataProjection import *
 from BuildAdjacency import *
 from OutlierDetection import *
@@ -7,50 +10,57 @@ from SpectralClustering import *
 from SparseCoefRecovery import *
 
 
-def SSC_test():
-    # Basic test to check SSC.
+def SSC(data, nb_clusters, ground_truth=None):
 
-    D = 30  # Dimension of ambient space
-    n = 2  # Number of subspaces
-    d1 = 1
-    d2 = 1  # d1 and d2: dimension of subspace 1 and 2
-    N1 = 50
-    N2 = 50  # N1 and N2: number of points in subspace 1 and 2
-    noise = 0.01
-    # Generating N1 points in a d1 dim. subspace
-    X1 = np.random.randn(D, d1) * np.random.randn(d1, N1) + noise * np.random.randn(D, N1)
-    # Generating N2 points in a d2 dim. subspace
-    X2 = np.random.randn(D, d2) * np.random.randn(d2, N2) + noise * np.random.randn(D, N2)
-    X = np.concatenate((X1, X2), axis=1)
+    # The method expects DxN matrix, where columns represent points
+    X = data.transpose()
+    D, N = X.shape
 
-    # Generating the ground-truth for evaluating clustering results
-    s = np.concatenate((1 * np.ones([1, N1]), 2 * np.ones([1, N2])), axis=1)
     r = 0  # Enter the projection dimension e.g. r = d*n, enter r = 0 to not project
-    Cst = 0  # Enter 1 to use the additional affine constraint sum(c) == 1
+    Cst = 1  # Enter 1 to use the additional affine constraint sum(c) == 1
     OptM = 'L1Noise'  # OptM can be {'L1Perfect','L1Noise','Lasso','L1ED'}
     lmbda = 0.02  # Regularization parameter in 'Lasso' or the noise level for 'L1Noise'
     # Number of top coefficients to build the similarity graph, enter K=0 for using the whole coefficients
-    K = max(d1, d2)
-    if Cst == 1:
-        K = max(d1, d2) + 1  # For affine subspaces, the number of coefficients to pick is dimension + 1
 
-    Xp = DataProjection(X, r, 'NormalProj')
-    CMat = SparseCoefRecovery(Xp, Cst, OptM, lmbda)
+
+    Xp = DataProjection(X, r, 'NormalProj') # Projects the DxN data matrix into an r-dimensional space
+    CMat = SparseCoefRecovery(Xp, Cst, OptM, lmbda) # Sparse optimization
     # Make small values 0
     eps = np.finfo(float).eps
     CMat[np.abs(CMat) < eps] = 0
 
+    s = ground_truth if ground_truth is not None else np.zeros_like(X[:1]) # ground_truth or vector to ignore afterwards
     CMatC, sc, OutlierIndx, Fail = OutlierDetection(CMat, s)
 
-    if Fail == False:
-        CKSym = BuildAdjacency(CMatC, K)
-        Grps = SpectralClustering(CKSym, n)
+    if Fail:
+        raise RuntimeError("Something failed")
+    
+    CKSym = BuildAdjacency(CMatC, 0) # 0 for use all coefficients in adjacency graph, else the number of strongest connections to keep in the graph (something like max of dimensions of the subspaces if it is known, or 1+max ... if affine clusters)
+    Grps = SpectralClustering(CKSym, nb_clusters) # shape (N,) containing label of each point
+
+    if ground_truth is not None:
         Grps = BestMap(sc, Grps)
         Missrate = float(np.sum(sc != Grps)) / sc.size
         print("Misclassification rate: {:.4f} %".format(Missrate * 100))
-    else:
-        print("Something failed")
+
+    return Grps    
 
 
 if __name__ == "__main__":
-    SSC_test()
+    parser = ArgumentParser()
+    parser.add_argument("data", help="Path to data file (text file)")
+    parser.add_argument("nb_clusters", type=int, help="Number of clusters")
+    parser.add_argument("--labels", required=False, default=None, help="Path to ground truth labels (text file)")
+    parser.add_argument("--out", required=False, default=None, help="Path where the output labels will be saved (text file)")
+    
+    args = parser.parse_args(sys.argv[1:])
+
+    data = np.loadtxt(args.data)
+    labels = np.loadtxt(args.labels) if args.labels is not None else None
+
+    predicted_labels = SSC(data, nb_clusters=4, ground_truth=labels)
+    
+    if args.out is not None:
+        np.savetxt(args.out, np.expand_dims(predicted_labels, axis=1).astype(int), fmt="%i")
+    else:
+        print(predicted_labels.astype(int))
