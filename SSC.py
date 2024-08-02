@@ -16,18 +16,19 @@ def SSC_test():
     d2 = 1  # d1 and d2: dimension of subspace 1 and 2
     N1 = 50
     N2 = 50  # N1 and N2: number of points in subspace 1 and 2
+    noise = 0.01
     # Generating N1 points in a d1 dim. subspace
-    X1 = np.random.randn(D, d1) * np.random.randn(d1, N1)
+    X1 = np.random.randn(D, d1) * np.random.randn(d1, N1) + noise * np.random.randn(D, N1)
     # Generating N2 points in a d2 dim. subspace
-    X2 = np.random.randn(D, d2) * np.random.randn(d2, N2)
+    X2 = np.random.randn(D, d2) * np.random.randn(d2, N2) + noise * np.random.randn(D, N2)
     X = np.concatenate((X1, X2), axis=1)
 
     # Generating the ground-truth for evaluating clustering results
     s = np.concatenate((1 * np.ones([1, N1]), 2 * np.ones([1, N2])), axis=1)
     r = 0  # Enter the projection dimension e.g. r = d*n, enter r = 0 to not project
     Cst = 0  # Enter 1 to use the additional affine constraint sum(c) == 1
-    OptM = 'L1Perfect'  # OptM can be {'L1Perfect','L1Noise','Lasso','L1ED'}
-    lmbda = 0.001  # Regularization parameter in 'Lasso' or the noise level for 'L1Noise'
+    OptM = 'L1Noise'  # OptM can be {'L1Perfect','L1Noise','Lasso','L1ED'}
+    lmbda = 0.02  # Regularization parameter in 'Lasso' or the noise level for 'L1Noise'
     # Number of top coefficients to build the similarity graph, enter K=0 for using the whole coefficients
     K = max(d1, d2)
     if Cst == 1:
