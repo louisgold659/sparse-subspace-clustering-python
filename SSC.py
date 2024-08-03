@@ -55,9 +55,9 @@ def SSC(data, nb_clusters, ground_truth=None, r=0, Proj="NormalProj", Cst=1, Opt
 
 if __name__ == "__main__":
     parser = ArgumentParser()
-    parser.add_argument("data", help="Path to data file (text file)")
-    parser.add_argument("nb_clusters", type=int, help="Number of clusters")
+    parser.add_argument("--data", required=True, help="Path to data file (text file)")
     parser.add_argument("--labels", required=False, default=None, help="Path to ground truth labels (text file)")
+    parser.add_argument("--nb_clusters", required=True, type=int, help="Number of clusters")
     parser.add_argument("--out", required=False, default=None, help="Path where the output labels will be saved (text file)")
     
     args = parser.parse_args(sys.argv[1:])
