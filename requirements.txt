@@ -2,3 +2,6 @@ numpy
 scipy
 scikit-learn
 cvxpy
+matplotlib
+ipykernel
+ipympl

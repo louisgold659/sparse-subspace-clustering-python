@@ -10,20 +10,27 @@ from SpectralClustering import *
 from SparseCoefRecovery import *
 
 
-def SSC(data, nb_clusters, ground_truth=None):
+def SSC(data, nb_clusters, ground_truth=None, r=0, Proj="NormalProj", Cst=1, OptM="Lasso", lmbda=0.01, K=0):
+    """
+    Main function for SSC execution.
+    
+    Arguments:
+    data : (N, D) numpy.ndarray containing the datapoints
+    nb_clusters : the number of clusters
+    ground_truth : (N,) numpy.ndarray containing ground-truth labels
+    r : The projection dimension if data is projected before being clustered, 0 is not projection.
+    Proj : can be {'PCA', 'NormalProj', 'BernoulliProj'}
+    Cst : 1 to use additional affine contraint sum(c) == 1, 0 otherwise
+    OptM : can be {'L1Perfect','L1Noise','Lasso','L1ED'}
+    lmbda : Regularization parameter in 'Lasso' or the noise level for 'L1Noise'
+    K : 0 for use all coefficients in adjacency graph, else the number of strongest connections to keep in the graph (something like max of dimensions of the subspaces if it is known, or 1+max ... if affine clusters)
+    """
 
     # The method expects DxN matrix, where columns represent points
     X = data.transpose()
     D, N = X.shape
 
-    r = 0  # Enter the projection dimension e.g. r = d*n, enter r = 0 to not project
-    Cst = 1  # Enter 1 to use the additional affine constraint sum(c) == 1
-    OptM = 'L1Noise'  # OptM can be {'L1Perfect','L1Noise','Lasso','L1ED'}
-    lmbda = 0.02  # Regularization parameter in 'Lasso' or the noise level for 'L1Noise'
-    # Number of top coefficients to build the similarity graph, enter K=0 for using the whole coefficients
-
-
-    Xp = DataProjection(X, r, 'NormalProj') # Projects the DxN data matrix into an r-dimensional space
+    Xp = DataProjection(X, r, Proj) # Projects the DxN data matrix into an r-dimensional space
     CMat = SparseCoefRecovery(Xp, Cst, OptM, lmbda) # Sparse optimization
     # Make small values 0
     eps = np.finfo(float).eps
@@ -35,7 +42,7 @@ def SSC(data, nb_clusters, ground_truth=None):
     if Fail:
         raise RuntimeError("Something failed")
     
-    CKSym = BuildAdjacency(CMatC, 0) # 0 for use all coefficients in adjacency graph, else the number of strongest connections to keep in the graph (something like max of dimensions of the subspaces if it is known, or 1+max ... if affine clusters)
+    CKSym = BuildAdjacency(CMatC, K) 
     Grps = SpectralClustering(CKSym, nb_clusters) # shape (N,) containing label of each point
 
     if ground_truth is not None:
